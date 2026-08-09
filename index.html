@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Casio JW-Style Calculator</title>
+    <style>
+        /* Define your custom ClasswizDisplayFont here */
+        @font-face {
+            font-family: 'ClasswizDisplayFont';
+            src: local('ClasswizDisplayFont'); 
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #e8eae6; /* Softer background to complement the green */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            overflow: hidden; 
+            transition: background-color 0.3s;
+        }
+
+        /* Fullscreen & Stretch Buttons */
+        .fullscreen-btn, .stretch-btn {
+            position: fixed;
+            top: 15px;
+            background-color: #55624e;
+            color: #fff;
+            border: 2px solid #3a4534;
+            border-radius: 8px;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+
+        .fullscreen-btn { right: 15px; }
+        .stretch-btn { right: 70px; display: none; }
+
+        .fullscreen-btn:hover, .stretch-btn:hover { background-color: #65755d; transform: scale(1.05); }
+        .fullscreen-btn:active, .stretch-btn:active { transform: scale(0.95); }
+
+        body.ios-fullscreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            padding: 0; margin: 0;
+            background-color: #111;
+        }
+
+        /* Calculator Body - Sage Green */
+        .calculator {
+            background-color: #728269; 
+            width: 100%;
+            max-width: 380px;
+            border-radius: 12px;
+            padding: 25px 20px;
+            box-shadow: 
+                0 15px 30px rgba(0,0,0,0.3),
+                inset 0 2px 3px rgba(255,255,255,0.15),
+                inset 0 -4px 6px rgba(0,0,0,0.2);
+            transform-origin: center center;
+            will-change: transform, border-radius;
+            transition: border-radius 0.2s, padding 0.2s;
+        }
+
+        /* --- Native Full-Screen Fit Mode --- */
+        .calculator.fill-screen {
+            max-width: 100%;
+            width: 100vw;
+            height: 100dvh; 
+            border-radius: 0;
+            padding: 15px 15px 25px 15px;
+            margin: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        
+        .calculator.fill-screen .keypad {
+            flex-grow: 1;
+            display: grid;
+            grid-template-rows: auto auto repeat(4, 1fr);
+            align-items: stretch;
+            gap: 2%;
+        }
+
+        .calculator.fill-screen .key-wrapper {
+            justify-content: flex-end;
+        }
+
+        .calculator.fill-screen button {
+            height: 100% !important; 
+            font-size: min(6vw, 3.5vh) !important; 
+        }
+        
+        .calculator.fill-screen .btn-small {
+            font-size: min(3vw, 2vh) !important;
+        }
+        
+        .calculator.fill-screen .casing-label {
+            font-size: min(2.5vw, 1.5vh) !important;
+            margin-bottom: 5px;
+        }
+
+        .calculator.fill-screen .display-container,
+        .calculator.fill-screen .header {
+            flex-shrink: 0;
+        }
+        
+        .calculator.fill-screen .display {
+            font-size: min(12vw, 8vh); 
+            padding-top: min(8vw, 4vh);
+        }
+
+        /* Top Header Section */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .brand { color: #e8eee5; font-weight: 900; font-size: 1.2rem; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
+        
+        .solar-panel { background-color: #2b3327; width: 80px; height: 22px; border-radius: 2px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.6); border: 1px solid #1a2017; position: relative; }
+        .solar-panel::after { content: ''; position: absolute; top: 0; left: 25%; right: 25%; bottom: 0; border-left: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); }
+        
+        .model-info { text-align: right; color: #ced6c8; font-size: 0.55rem; font-weight: bold; line-height: 1.2; }
+        .model-info .model-name { color: #e8eee5; font-size: 0.65rem; }
+        .model-info .digits-highlight { color: #e8eee5; font-size: 0.75rem; font-style: italic; font-weight: 900; }
+
+        /* Display Screen */
+        .display-container { background-color: #3b4535; padding: 8px; border-radius: 8px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); margin-bottom: 20px; position: relative; }
+        .display { background-color: #e2e6e1; border-radius: 4px; padding: 26px 12px 10px 12px; text-align: right; color: #111; font-family: 'ClasswizDisplayFont', monospace; font-size: 2.05rem; letter-spacing: -1.5px; line-height: 1; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; position: relative; }
+        .sep { display: inline; margin-left: -1px; margin-right: -1px; }
+
+        /* Fixed Screen Indicators */
+        .screen-indicators { position: absolute; top: 13px; left: 14px; right: 14px; display: flex; justify-content: space-between; color: #111; font-family: Arial, sans-serif; font-size: 0.75rem; font-weight: bold; z-index: 10; }
+        .indicator-group { display: flex; gap: 8px; align-items: center; }
+        .lcd-ind { opacity: 0.08; transition: opacity 0.1s; }
+        .lcd-ind.active { opacity: 1; }
+        #ind-ops-center { font-size: 0.95rem; gap: 6px; }
+
+        /* Keypad Grid */
+        .keypad { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; }
+        .key-wrapper { display: flex; flex-direction: column; align-items: stretch; text-align: center; }
+        
+        .casing-label { color: #d0d8cb; font-size: 0.5rem; font-weight: bold; margin-bottom: 3px; text-align: center; }
+        .clickable-label { cursor: pointer; transition: color 0.2s; }
+        .clickable-label:hover { color: #fff; }
+
+        .steps-check-wrapper { grid-column: span 2; display: flex; flex-direction: column; background-color: #8c9c83; border-radius: 5px; padding: 3px 5px; margin-bottom: -2px; box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.15); }
+        .steps-check-wrapper .steps-label { color: #e8eee5; font-size: 0.5rem; font-weight: bold; font-style: italic; text-align: center; margin-bottom: 4px; }
+        .steps-check-buttons { display: flex; gap: 8px; justify-content: space-between; flex-grow: 1; align-items: stretch; }
+        .steps-check-buttons button { flex-grow: 1; }
+
+        /* Base Button Styles - Dark Olive */
+        button { width: 100%; height: 42px; border: none; border-radius: 6px; background-color: #55624e; color: #fff; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 2px 0 #3a4534, 0 4px 5px rgba(0,0,0,0.2); transition: transform 0.1s, box-shadow 0.1s; display: flex; justify-content: center; align-items: center; font-family: Arial, sans-serif; }
+        button:active { transform: translateY(2px); box-shadow: 0 0 0 #3a4534, 0 1px 2px rgba(0,0,0,0.3); }
+
+        .btn-small { height: 28px; font-size: 0.6rem; border-radius: 4px; box-shadow: 0 2px 0 #3a4534, 0 3px 4px rgba(0,0,0,0.2); }
+        .btn-small:active { transform: translateY(2px); box-shadow: 0 0 0 #3a4534; }
+        
+        /* Unified Button Colors (matching the uniform look of the JW-200DQ) */
+        .btn-pink { background-color: #55624e; box-shadow: 0 2px 0 #3a4534, 0 4px 5px rgba(0,0,0,0.2); }
+        .btn-pink:active { box-shadow: 0 0 0 #3a4534; }
+        
+        .btn-tall { height: 94px; grid-row: span 2; }
+
+        .on-wrapper { position: relative; display: flex; align-items: stretch; justify-content: stretch; }
+        .on-label { position: absolute; left: -15px; top: 50%; transform: translateY(-50%); color: #d0d8cb; font-size: 0.45rem; font-weight: bold; z-index: 10;}
+        .small-text { font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Stretch Toggle Button -->
+    <button id="stretch-btn" class="stretch-btn" onclick="toggleStretch()" title="Toggle Screen Fit">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+    </button>
+
+    <!-- Fullscreen Toggle Button -->
+    <button id="fullscreen-btn" class="fullscreen-btn" onclick="toggleFullScreen()" title="Toggle Fullscreen">
+        <svg id="icon-enter" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>
+    </button>
+
+    <div class="calculator" id="calculator">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand">CASIO</div>
+            <div class="solar-panel"></div>
+            <div class="model-info">
+                <span class="model-name">JW-STYLE</span> <span class="digits-highlight">12</span> DIGITS<br>
+                TWO WAY POWER
+            </div>
+        </div>
+
+        <!-- Display -->
+        <div class="display-container">
+            <div class="screen-indicators">
+                <div class="indicator-group">
+                    <span id="ind-mem" class="lcd-ind">M</span>
+                    <span id="ind-step" class="lcd-ind" style="width: 50px; text-align: left;">REV 00</span>
+                </div>
+                <div class="indicator-group" id="ind-ops-center">
+                    <span id="ind-minus" class="lcd-ind">−</span>
+                    <span id="ind-plus" class="lcd-ind">+</span>
+                    <span id="ind-mul" class="lcd-ind">×</span>
+                    <span id="ind-div" class="lcd-ind">÷</span>
+                    <span id="ind-eq" class="lcd-ind">=</span>
+                    <span id="ind-pct" class="lcd-ind">%</span>
+                </div>
+                <div class="indicator-group">
+                    <span id="ind-tax" class="lcd-ind" style="width: 55px; text-align: right;">TAX</span>
+                </div>
+            </div>
+            <div class="display" id="display">0.</div>
+        </div>
+
+        <!-- Keypad -->
+        <div class="keypad">
+            <div class="key-wrapper"><button class="btn-small" onclick="toggleDisp()">DISP</button></div>
+            <div class="key-wrapper"><button class="btn-small" onclick="historyGoTo()">GO TO</button></div>
+            <div class="key-wrapper"><button class="btn-small" onclick="autoReview()">AUTO<br>REVIEW</button></div>
+            <div class="key-wrapper"><button class="btn-small" onclick="clearHistory()">CORRECT</button></div>
+            <div class="steps-check-wrapper">
+                <div class="steps-label">150 STEPS CHECK</div>
+                <div class="steps-check-buttons">
+                    <button class="btn-small" onclick="reviewStep(1)">Δ</button>
+                    <button class="btn-small" onclick="reviewStep(-1)">∇</button>
+                </div>
+            </div>
+
+            <div class="key-wrapper"><span class="casing-label">TAX RATE</span><button class="btn-small" style="height: 35px;" onclick="calculateTax('+')">TAX+</button></div>
+            <div class="key-wrapper"><span class="casing-label clickable-label" onclick="setTaxRate()">RATE SET</span><button class="btn-small" style="height: 35px;" onclick="calculateTax('-')">TAX-</button></div>
+            <div class="key-wrapper"><span class="casing-label">&nbsp;</span><button class="btn-small" style="height: 35px;" onclick="calculatePercentage()">%</button></div>
+            <div class="key-wrapper"><span class="casing-label">&nbsp;</span><button class="btn-small" style="height: 35px; font-size: 1rem;" onclick="calculateSquareRoot()">√</button></div>
+            <div class="key-wrapper"><span class="casing-label">&nbsp;</span><button class="btn-small" style="height: 35px;" onclick="backspace()">►</button></div>
+            <div class="key-wrapper"><span class="casing-label">&nbsp;</span><button class="btn-small" style="height: 35px;" onclick="calculateMU()">MU</button></div>
+
+            <button onclick="toggleSign()">+/-</button>
+            <button onclick="appendNumber('7')">7</button>
+            <button onclick="appendNumber('8')">8</button>
+            <button onclick="appendNumber('9')">9</button>
+            <button onclick="setOperator('*')">×</button>
+            <button onclick="setOperator('/')">÷</button>
+
+            <button class="btn-pink" onclick="clearEntry()">C</button>
+            <button onclick="appendNumber('4')">4</button>
+            <button onclick="appendNumber('5')">5</button>
+            <button onclick="appendNumber('6')">6</button>
+            <button onclick="setOperator('-')">−</button>
+            <button class="small-text" onclick="memoryRecallClear()">MRC</button>
+
+            <div class="key-wrapper on-wrapper" style="grid-column: span 1;">
+                <span class="on-label">ON</span>
+                <button class="btn-pink" style="width: 100%;" onclick="allClear()">AC</button>
+            </div>
+            <button onclick="appendNumber('1')">1</button>
+            <button onclick="appendNumber('2')">2</button>
+            <button onclick="appendNumber('3')">3</button>
+            <button class="btn-tall" onclick="setOperator('+')">+</button>
+            <button onclick="memoryMinus()">M−</button>
+
+            <button onclick="appendNumber('0')">0</button>
+            <button onclick="appendNumber('00')">00</button>
+            <button onclick="appendDot()">.</button>
+            <button onclick="calculateResult()">=</button>
+            <button onclick="memoryPlus()">M+</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Fullscreen & Native Flex Stretching Logic ---
+        const calcElement = document.getElementById('calculator');
+        const fsBtn = document.getElementById('fullscreen-btn');
+        const stretchBtn = document.getElementById('stretch-btn');
+        
+        const svgEnter = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+        const svgExit = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>`;
+
+        let isStretched = false;
+
+        function isFullscreenActive() {
+            return document.fullscreenElement || 
+                   document.webkitFullscreenElement || 
+                   document.body.classList.contains('ios-fullscreen');
+        }
+
+        function toggleStretch() {
+            isStretched = !isStretched;
+            adjustScale();
+        }
+
+        function toggleFullScreen() {
+            if (!isFullscreenActive()) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) { 
+                    document.documentElement.webkitRequestFullscreen();
+                } else {
+                    document.body.classList.add('ios-fullscreen'); 
+                    updateFsState();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { 
+                    document.webkitExitFullscreen();
+                } else {
+                    document.body.classList.remove('ios-fullscreen'); 
+                    updateFsState();
+                }
+            }
+        }
+
+        function updateFsState() {
+            const active = isFullscreenActive();
+            fsBtn.innerHTML = active ? svgExit : svgEnter;
+            
+            if (!active) {
+                isStretched = false; 
+                stretchBtn.style.display = 'none';
+            } else {
+                stretchBtn.style.display = 'flex';
+            }
+            
+            setTimeout(adjustScale, 50); 
+        }
+
+        function adjustScale() {
+            calcElement.style.transform = 'none';
+            calcElement.classList.remove('fill-screen');
+            
+            const rect = calcElement.getBoundingClientRect();
+            const winWidth = window.innerWidth;
+            const winHeight = window.innerHeight;
+
+            if (isFullscreenActive()) {
+                document.body.style.backgroundColor = '#111';
+                
+                if (isStretched) {
+                    calcElement.classList.add('fill-screen');
+                } else {
+                    const scaleX = winWidth / rect.width;
+                    const scaleY = winHeight / rect.height;
+                    const scale = Math.min(scaleX, scaleY);
+                    calcElement.style.transform = `scale(${scale})`;
+                }
+                
+            } else {
+                document.body.style.backgroundColor = '#e8eae6';
+                if (winWidth < rect.width + 40 || winHeight < rect.height + 40) {
+                    const scaleX = winWidth / (rect.width + 40);
+                    const scaleY = winHeight / (rect.height + 40);
+                    const scale = Math.min(scaleX, scaleY);
+                    calcElement.style.transform = `scale(${scale})`;
+                }
+            }
+        }
+
+        window.addEventListener('resize', adjustScale);
+        document.addEventListener('fullscreenchange', updateFsState);
+        document.addEventListener('webkitfullscreenchange', updateFsState);
+        adjustScale();
+
+
+        // --- Calculator Core Logic ---
+        const display = document.getElementById('display');
+        const indMem = document.getElementById('ind-mem');
+        const indStep = document.getElementById('ind-step');
+        const indTax = document.getElementById('ind-tax');
+        const indPlus = document.getElementById('ind-plus');
+        const indMinus = document.getElementById('ind-minus');
+        const indMul = document.getElementById('ind-mul');
+        const indDiv = document.getElementById('ind-div');
+        const indEq = document.getElementById('ind-eq');
+        const indPct = document.getElementById('ind-pct');
+
+        let currentInput = '0';
+        let previousInput = '';
+        let currentOperator = null;
+        let shouldResetScreen = false;
+        let lastOperator = null;
+        let lastConstant = null;
+        let memoryValue = 0;
+        let mrcPressCount = 0;
+        let isIndianFormat = true; 
+        let taxRate = 5.0; 
+        let historyLog = [];
+        let currentStepIndex = -1;
+        let reviewMode = false;
+        let autoReviewInterval = null;
+
+        const MAX_DIGITS = 12;
+
+        function clearOpIndicators() {
+            indPlus.classList.remove('active');
+            indMinus.classList.remove('active');
+            indMul.classList.remove('active');
+            indDiv.classList.remove('active');
+            indEq.classList.remove('active');
+            indPct.classList.remove('active');
+        }
+
+        function clearCalcStateIndicators() {
+            indEq.classList.remove('active');
+            indPct.classList.remove('active');
+        }
+
+        function renderZeroWidthHTML(finalStr) {
+            let htmlStr = '';
+            for(let i=0; i<finalStr.length; i++) {
+                let char = finalStr[i];
+                if (char === ',' || char === '.') {
+                    htmlStr += `<span class="sep">${char}</span>`;
+                } else {
+                    htmlStr += char;
+                }
+            }
+            return htmlStr;
+        }
+
+        function updateDisplay() {
+            let tempStr = currentInput.toString().replace('-', '');
+            
+            if (tempStr.replace('.', '').length > MAX_DIGITS) {
+                if (!currentInput.toString().includes('.')) {
+                    currentInput = Number(currentInput).toExponential(MAX_DIGITS - 4);
+                } else {
+                    currentInput = currentInput.toString().substring(0, MAX_DIGITS + (currentInput.toString().startsWith('-') ? 2 : 1));
+                }
+            }
+
+            let parts = currentInput.toString().split('.');
+            let intPart = parts[0].replace('-', '');
+            
+            if (intPart.length > 3) {
+                if (isIndianFormat) {
+                    intPart = intPart.substring(0, intPart.length - 3).replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + intPart.substring(intPart.length - 3);
+                } else {
+                    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                }
+            }
+            
+            parts[0] = (currentInput.toString().startsWith('-') ? '-' : '') + intPart;
+            let finalStr = parts.join('.');
+
+            if (currentInput === '0') {
+                display.innerHTML = renderZeroWidthHTML('0.');
+            } else if (currentInput.toString().endsWith('.')) {
+                display.innerHTML = renderZeroWidthHTML(finalStr);
+            } else {
+                display.innerHTML = renderZeroWidthHTML(finalStr);
+            }
+        }
+
+        function appendNumber(number) {
+            stopReview();
+            clearCalcStateIndicators();
+            if (shouldResetScreen) {
+                if (currentOperator === null) { lastOperator = null; lastConstant = null; }
+                currentInput = number;
+                shouldResetScreen = false;
+            } else {
+                if (currentInput === '0' && number !== '00') {
+                    currentInput = number;
+                } else if (currentInput === '0' && number === '00') {
+                    return;
+                } else {
+                    let tempStr = currentInput.toString().replace(/[.-]/g, '');
+                    if (tempStr.length < MAX_DIGITS) currentInput += number;
+                }
+            }
+            mrcPressCount = 0; 
+            updateDisplay();
+        }
+
+        function appendDot() {
+            stopReview();
+            clearCalcStateIndicators();
+            if (shouldResetScreen) {
+                if (currentOperator === null) { lastOperator = null; lastConstant = null; }
+                currentInput = '0.';
+                shouldResetScreen = false;
+            } else if (!currentInput.toString().includes('.')) {
+                currentInput += '.';
+            }
+            updateDisplay();
+        }
+
+        function backspace() {
+            stopReview();
+            clearCalcStateIndicators();
+            if (shouldResetScreen) return;
+            if (currentInput.toString().length > 1) {
+                currentInput = currentInput.toString().slice(0, -1);
+                if (currentInput === '-' || currentInput === '-0') currentInput = '0';
+            } else {
+                currentInput = '0';
+            }
+            updateDisplay();
+        }
+
+        function toggleSign() {
+            stopReview();
+            clearCalcStateIndicators();
+            if (currentInput === '0' || currentInput === '0.') return;
+            if (currentInput.toString().startsWith('-')) {
+                currentInput = currentInput.toString().substring(1);
+            } else {
+                currentInput = '-' + currentInput.toString();
+            }
+            updateDisplay();
+        }
+
+        function setOperator(operator) {
+            stopReview();
+            if (currentOperator !== null && !shouldResetScreen) calculateResult(true); 
+            previousInput = currentInput;
+            currentOperator = operator;
+            
+            clearOpIndicators();
+            if (operator === '+') indPlus.classList.add('active');
+            if (operator === '-') indMinus.classList.add('active');
+            if (operator === '*') indMul.classList.add('active');
+            if (operator === '/') indDiv.classList.add('active');
+
+            lastOperator = null;
+            lastConstant = null;
+            shouldResetScreen = true;
+            mrcPressCount = 0;
+        }
+
+        function calculateResult(isIntermediate = false) {
+            stopReview();
+            if (currentOperator === null && lastOperator === null) return;
+            
+            let prev, current, result;
+
+            if (currentOperator !== null) {
+                prev = parseFloat(previousInput);
+                current = parseFloat(currentInput);
+                lastOperator = currentOperator;
+                lastConstant = (currentOperator === '*') ? prev : current;
+            } else {
+                if (lastOperator === '*') {
+                    prev = lastConstant;
+                    current = parseFloat(currentInput);
+                } else {
+                    prev = parseFloat(currentInput);
+                    current = lastConstant;
+                }
+            }
+
+            let activeOp = currentOperator || lastOperator;
+
+            switch (activeOp) {
+                case '+': result = prev + current; break;
+                case '-': result = prev - current; break;
+                case '*': result = prev * current; break;
+                case '/': result = prev / current; break;
+                default: return;
+            }
+
+            result = Math.round(result * 10000000000) / 10000000000;
+            currentInput = result.toString();
+            
+            if (!isIntermediate) {
+                saveToHistory(currentInput);
+                clearOpIndicators();
+                indEq.classList.add('active');
+            }
+
+            currentOperator = null;
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function setTaxRate() {
+            let rate = parseFloat(currentInput);
+            if (!isNaN(rate) && rate > 0) {
+                taxRate = rate;
+                indTax.innerText = `RATE %`;
+                indTax.classList.add('active');
+                setTimeout(() => { indTax.classList.remove('active'); indTax.innerText = 'TAX'; }, 1500);
+            }
+        }
+
+        function calculateTax(type) {
+            stopReview();
+            let val = parseFloat(currentInput);
+            if (type === '+') {
+                val = val + (val * taxRate / 100);
+                indTax.innerText = 'TAX+';
+            } else {
+                val = val / (1 + taxRate / 100);
+                indTax.innerText = 'TAX-';
+            }
+            
+            indTax.classList.add('active');
+            setTimeout(() => { indTax.classList.remove('active'); indTax.innerText = 'TAX'; }, 2000);
+            
+            currentInput = (Math.round(val * 100000000) / 100000000).toString();
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function calculateMU() {
+            stopReview();
+            if (currentOperator === null) return;
+            
+            let prev = parseFloat(previousInput);
+            let current = parseFloat(currentInput);
+            let result;
+
+            if (currentOperator === '+') result = prev / (1 - current / 100);
+            else if (currentOperator === '-') result = prev / (1 + current / 100);
+            else if (currentOperator === '*') result = prev * (1 + current / 100);
+            else if (currentOperator === '/') result = prev / (current / 100);
+
+            result = Math.round(result * 10000000000) / 10000000000;
+            currentInput = result.toString();
+            currentOperator = null;
+            clearOpIndicators();
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function calculatePercentage() {
+            stopReview();
+            if (currentOperator === '*' || currentOperator === '/') {
+                let result = parseFloat(previousInput) * (parseFloat(currentInput) / 100);
+                if (currentOperator === '/') result = parseFloat(previousInput) / (parseFloat(currentInput) / 100);
+                currentInput = result.toString();
+            } else {
+                currentInput = (parseFloat(currentInput) / 100).toString();
+            }
+            currentOperator = null;
+            clearOpIndicators();
+            indPct.classList.add('active');
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function calculateSquareRoot() {
+            stopReview();
+            clearCalcStateIndicators();
+            let val = parseFloat(currentInput);
+            if (val >= 0) {
+                currentInput = Math.sqrt(val).toString();
+                currentInput = (Math.round(parseFloat(currentInput) * 10000000) / 10000000).toString();
+            } else {
+                currentInput = "Error";
+            }
+            shouldResetScreen = true;
+            updateDisplay();
+        }
+
+        function clearEntry() { clearCalcStateIndicators(); currentInput = '0'; updateDisplay(); }
+
+        function allClear() {
+            stopReview();
+            clearOpIndicators();
+            currentInput = '0';
+            previousInput = '';
+            currentOperator = null;
+            lastOperator = null;
+            lastConstant = null;
+            shouldResetScreen = false;
+            mrcPressCount = 0;
+            updateDisplay();
+        }
+
+        function memoryPlus() {
+            stopReview();
+            if (currentOperator !== null && !shouldResetScreen) calculateResult(true);
+            memoryValue += parseFloat(currentInput);
+            indMem.classList.add('active');
+            shouldResetScreen = true;
+            mrcPressCount = 0;
+        }
+
+        function memoryMinus() {
+            stopReview();
+            if (currentOperator !== null && !shouldResetScreen) calculateResult(true);
+            memoryValue -= parseFloat(currentInput);
+            indMem.classList.add('active');
+            shouldResetScreen = true;
+            mrcPressCount = 0;
+        }
+
+        function memoryRecallClear() {
+            stopReview();
+            mrcPressCount++;
+            if (mrcPressCount === 1) {
+                currentInput = memoryValue.toString();
+                shouldResetScreen = true;
+                updateDisplay();
+            } else if (mrcPressCount >= 2) {
+                memoryValue = 0;
+                mrcPressCount = 0;
+                indMem.classList.remove('active');
+            }
+        }
+
+        function toggleDisp() { isIndianFormat = !isIndianFormat; updateDisplay(); }
+
+        function saveToHistory(val) {
+            if(historyLog.length >= 150) historyLog.shift();
+            historyLog.push(val);
+            currentStepIndex = historyLog.length - 1;
+        }
+
+        function clearHistory() {
+            historyLog = [];
+            currentStepIndex = -1;
+            stopReview();
+            indStep.classList.add('active');
+            indStep.innerText = "CLR";
+            setTimeout(() => { indStep.classList.remove('active'); indStep.innerText = "REV 00"; }, 1000);
+        }
+
+        function historyGoTo() {
+            if(historyLog.length > 0) {
+                currentStepIndex = historyLog.length - 1;
+                showReviewStep();
+            }
+        }
+
+        function reviewStep(direction) {
+            if (historyLog.length === 0) return;
+            reviewMode = true;
+            currentStepIndex += direction;
+            
+            if (currentStepIndex >= historyLog.length) currentStepIndex = 0;
+            if (currentStepIndex < 0) currentStepIndex = historyLog.length - 1;
+            
+            showReviewStep();
+        }
+
+        function showReviewStep() {
+            if (currentStepIndex >= 0 && currentStepIndex < historyLog.length) {
+                currentInput = historyLog[currentStepIndex];
+                indStep.innerText = `REV ${String(currentStepIndex + 1).padStart(2, '0')}`;
+                indStep.classList.add('active');
+                shouldResetScreen = true;
+                updateDisplay();
+            }
+        }
+
+        function autoReview() {
+            if (historyLog.length === 0 || autoReviewInterval) return;
+            reviewMode = true;
+            currentStepIndex = 0;
+            showReviewStep();
+            
+            autoReviewInterval = setInterval(() => {
+                currentStepIndex++;
+                if (currentStepIndex >= historyLog.length) {
+                    stopReview();
+                } else {
+                    showReviewStep();
+                }
+            }, 800);
+        }
+
+        function stopReview() {
+            reviewMode = false;
+            indStep.classList.remove('active');
+            indStep.innerText = 'REV 00';
+            if (autoReviewInterval) {
+                clearInterval(autoReviewInterval);
+                autoReviewInterval = null;
+            }
+        }
+        
+        updateDisplay();
+    </script>
+</body>
+</html>
